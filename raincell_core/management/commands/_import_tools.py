@@ -41,9 +41,9 @@ def import_file(file_path, mask_path, verbose=False):
                 file_day = filename.split('_')[0]
                 file_day_date = datetime.datetime.strptime(file_day, "%Y%m%d").date()
                 file_time = filename.split('_')[1]
-                location = Point(lat, lon)
+                location = Point(lon, lat)
                 recs = CellRecord.objects.filter(location__equals=location,
-                                                 day=file_day_date,
+                                                 recorded_day=file_day_date,
                                                  # day__year=file_day[0:4],
                                                  # day__month=file_day[4:6],
                                                  # day__day=file_day[6:8],
@@ -51,7 +51,7 @@ def import_file(file_path, mask_path, verbose=False):
                 rec = recs.first()
                 if rec is None:  # queryset was empty
                     rec = CellRecord.objects.create(location=location,
-                                                    day=file_day_date,
+                                                    recorded_day=file_day_date,
                                                     )
                 rec.quantile25[file_time] = nc.variables['Rainfall'][0, ilat, ilon].item()
                 rec.quantile50[file_time] = nc.variables['Rainfall'][1, ilat, ilon].item()

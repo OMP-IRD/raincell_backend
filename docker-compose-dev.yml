@@ -16,3 +16,15 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_DB: raincell
       POSTGRES_PASSWORD: raincell
+
+  pg-tileserv:
+    image: pigeosolutions/pg_tileserv:latest-alpine-3.12
+    entrypoint: [ "/wait-for-db.sh" ]
+    depends_on:
+      - database
+    env_file:
+      - pg_tileserv.env
+    ports:
+      - 7800:7800
+    volumes:
+      - ./config/:/config/
