@@ -21,3 +21,7 @@ class CellRecord(models.Model):
                 fields=["location", "day"], name="unique_location_day"
             )
         ]
+        indexes = [
+            models.Index(fields=['location', '-day']),
+            models.Index(fields=['-day']),
+        ]
