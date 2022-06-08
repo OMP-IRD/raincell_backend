@@ -37,7 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'raincell_core.apps.ApiConfig',
+    'django.contrib.gis',
+    'raincell_core.apps.RaincellCoreConfig',
 ]
 
 MIDDLEWARE = [
@@ -78,6 +79,9 @@ WSGI_APPLICATION = 'raincell_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'OPTIONS': {
+            'options': '-c search_path=raincell_cameroun,public,topology'
+        },
         'NAME': 'raincell',
         'USER': 'postgres',
         'PASSWORD': 'raincell',
