@@ -5,4 +5,4 @@ from .models import CellRecord
 class CellRecordDailyValueSerializer(serializers.ModelSerializer):
    class Meta:
         model = CellRecord
-        fields = ['recorded_day', 'daily_mean']
+        fields = ['cell_id', 'location', 'recorded_day', 'daily_mean']
