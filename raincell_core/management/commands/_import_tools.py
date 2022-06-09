@@ -56,7 +56,6 @@ def import_file(file_path, mask_path, verbose=False):
                 rec.quantile25[file_time] = nc.variables['Rainfall'][0, ilat, ilon].item()
                 rec.quantile50[file_time] = nc.variables['Rainfall'][1, ilat, ilon].item()
                 rec.quantile75[file_time] = nc.variables['Rainfall'][2, ilat, ilon].item()
-                rec.daily_mean = statistics.mean(rec.quantile50.values())
                 rec.save()
                 counter += 1
     return counter

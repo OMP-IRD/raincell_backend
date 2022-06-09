@@ -24,9 +24,10 @@ class Migration(migrations.Migration):
                   SELECT ST_TileEnvelope(z, x, y) AS geom
                 ),
                 rain_cells AS (
-                    SELECT ST_envelope(ST_buffer(location, 0.025/2)) AS geom, json_agg(quantiles50) AS quantiles50
+                    SELECT cell_id, ST_envelope(ST_buffer(location, 0.025/2)) AS geom, json_agg(quantiles50) AS quantiles50
                     FROM (
                         SELECT
+                            cell_id,
                             location,
                             recorded_day,
                             json_build_object(
@@ -37,13 +38,14 @@ class Migration(migrations.Migration):
                             ) as quantiles50
                         FROM raincell_core_cellrecord
                         WHERE recorded_day BETWEEN ref_date  - '2 days'::interval AND ref_date
-                        GROUP BY location, recorded_day
+                        GROUP BY cell_id, location, recorded_day
+                        ORDER BY recorded_day DESC
             
                     ) s
-                    GROUP BY location
+                    GROUP BY cell_id, location
                 ),
                 mvtgeom AS (
-                  SELECT ST_AsMVTGeom(ST_Transform(t.geom, 3857), bounds.geom) AS geom,
+                  SELECT t.cell_id, ST_AsMVTGeom(ST_Transform(t.geom, 3857), bounds.geom) AS geom,
                     t.quantiles50
                   FROM rain_cells t, bounds
                   WHERE ST_Intersects(t.geom, ST_Transform(bounds.geom, 4326))
