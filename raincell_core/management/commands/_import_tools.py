@@ -1,18 +1,59 @@
-from django.contrib.gis.geos import Point
-from raincell_core.models import CellRecord
-from django.db import transaction
-
 import netCDF4
 import datetime
 import os
 
+from django.contrib.gis.geos import Point
+from django.db import transaction
+from django.db import IntegrityError
+
+from raincell_core.models import CellRecord, Cell, RainRecord
+from raincell_core.utils import latlon_to_cellid
+
+
+# @transaction.atomic
+def import_mask_file(file_path):
+    coordinates_decimals = os.environ.get('RAINCELL_COORDINATES_ROUND_DECIMALS', '5')
+    coordinates_decimals = int(coordinates_decimals)
+    nc = netCDF4.Dataset(file_path, "r", format="netCDF4")
+    counter = 0
+    for ilon in range(nc.variables['lon'].size):
+        for ilat in range(nc.variables['lat'].size):
+            # print("{},{}".format(ilon, ilat))
+            # print(nc.variables['mask'][ilat, ilon])
+            lat = nc.variables['lat'][ilat].item()
+            lon = nc.variables['lon'][ilon].item()
+            # Round the lat/lon coordinates. Gets a cleaner output, since a few coords have bad rounding
+            # (e.g. 12.50000000001) which might cause some grid cells overlapping in the VT rendering
+            lat = round(lat, coordinates_decimals)
+            lon = round(lon, coordinates_decimals)
+            if nc.variables['mask'][ilat, ilon].item() > 0:
+                # Generate a Cell point in the DB
+                cell_id_from_coords = latlon_to_cellid(lat, lon, coordinates_decimals)
+                location = Point(lon, lat)
+                cell_exists = Cell.objects.filter(cell_id__exact=cell_id_from_coords).count()
+                if not cell_exists:
+                    # no existing cell => we create one
+                    try:
+                        rec = Cell.objects.create(
+                            cell_id=cell_id_from_coords,
+                            location=location,
+                        )
+                    except (IntegrityError):
+                        print(
+                            "ERR: non-unique relationship between geog coordinates and cell_id. You might need to increase the value of the RAINCELL_COORDINATES_ROUND_DECIMALS env. variable")
+                        raise
+                counter += 1
+    return counter
+
 
 @transaction.atomic
-def import_file(file_path, mask_path, verbose=False):
-    coordinates_decimals = os.environ.get('RAINCELL_COORDINATES_ROUND_DECIMALS')
+def import_file(file_path, verbose=False):
+    coordinates_decimals = os.environ.get('RAINCELL_COORDINATES_ROUND_DECIMALS', '5')
+    coordinates_decimals = int(coordinates_decimals)
 
     nc = netCDF4.Dataset(file_path, "r", format="netCDF4")
-    nc_mask = netCDF4.Dataset(mask_path, "r", format="netCDF4")
+    mask = list(Cell.objects.all().values('cell_id'))
+    mask_ids = [o['cell_id'] for o in mask]
     # ds = xr.open_dataset(file_path)
     # df = ds.to_dataframe()
     counter = 0
@@ -22,11 +63,10 @@ def import_file(file_path, mask_path, verbose=False):
             # print(nc_mask.variables['mask'][ilat, ilon])
             lat = nc.variables['latitude'][ilat].item()
             lon = nc.variables['longitude'][ilon].item()
-            if coordinates_decimals:
-                lat = round(lat, int(coordinates_decimals))
-                lon = round(lon, int(coordinates_decimals))
-            if nc_mask.variables['mask'][ilat, ilon].item() > 0:
-                if (verbose):
+            # Compute the cell_id from lat/lon
+            cell_id_from_coords = latlon_to_cellid(lat, lon, coordinates_decimals)
+            if cell_id_from_coords in mask_ids:
+                if verbose:
                     print("Coordinates: {} (lon) / {} (lat): {},{},{}".
                         format(
                             lat,
@@ -40,18 +80,15 @@ def import_file(file_path, mask_path, verbose=False):
                 file_day = filename.split('_')[0]
                 file_day_date = datetime.datetime.strptime(file_day, "%Y%m%d").date()
                 file_time = filename.split('_')[1]
-                location = Point(lon, lat)
-                recs = CellRecord.objects.filter(location__equals=location,
+                recs = RainRecord.objects.filter(cell_id__exact=cell_id_from_coords,
                                                  recorded_day=file_day_date,
-                                                 # day__year=file_day[0:4],
-                                                 # day__month=file_day[4:6],
-                                                 # day__day=file_day[6:8],
                                                  )
                 rec = recs.first()
                 if rec is None:  # queryset was empty
-                    rec = CellRecord.objects.create(location=location,
-                                                    recorded_day=file_day_date,
-                                                    )
+                    rec = RainRecord(
+                        cell_id=cell_id_from_coords,
+                        recorded_day=file_day_date,
+                    )
                 rec.quantile25[file_time] = nc.variables['Rainfall'][0, ilat, ilon].item()
                 rec.quantile50[file_time] = nc.variables['Rainfall'][1, ilat, ilon].item()
                 rec.quantile75[file_time] = nc.variables['Rainfall'][2, ilat, ilon].item()
