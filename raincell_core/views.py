@@ -66,16 +66,7 @@ class CellsList(generics.ListAPIView):
     Get Raincell cells ("pixels") list
     """
     serializer_class = CellsSerializer
-    queryset = CellRecord.objects.raw('SELECT DISTINCT id, cell_id, ST_X(location) AS lon, ST_Y(location) AS lat FROM raincell_core_cellrecord WHERE recorded_day IN (SELECT Max(recorded_day) FROM raincell_core_cellrecord)')
-    # def get_queryset(self):
-    #     """
-    #     This view should return a list of all the purchases
-    #     for the currently authenticated user.
-    #     """
-    #     recs = CellRecord.objects.raw('SELECT DISTINCT id, cell_id, location FROM raincell_core_cellrecord')
-    #     return recs
-
-
+    queryset = CellRecord.objects.raw('SELECT id, ST_X(location) AS lon, ST_Y(location) AS lat FROM raincell_core_cell')
 
 
 class CellDailyRecordsById(generics.GenericAPIView):

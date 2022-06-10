@@ -10,7 +10,7 @@ def json_empty_default():
 
 
 class Cell(models.Model):
-    cell_id = models.CharField(max_length=16, primary_key=True)
+    id = models.CharField(max_length=16, primary_key=True)
     # geographical position
     location = models.PointField()
     class Meta:
@@ -20,11 +20,11 @@ class Cell(models.Model):
         ]
         indexes = [
             models.Index(fields=['location']),
-            models.Index(fields=['cell_id']),
+            models.Index(fields=['id']),
         ]
 
     def save(self, *args, **kwargs):
-        self.cell_id = latlon_to_cellid(self.location.y, self.location.x)
+        self.id = latlon_to_cellid(self.location.y, self.location.x)
         super().save(*args, **kwargs)  # Call the "real" save() method.
 
 

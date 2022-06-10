@@ -6,12 +6,13 @@ from django.contrib.gis.geos import Point
 from django.db import transaction
 from django.db import IntegrityError
 
-from raincell_core.models import CellRecord, Cell, RainRecord
+from raincell_core.models import Cell, RainRecord
 from raincell_core.utils import latlon_to_cellid
 
 
 # @transaction.atomic
 def import_mask_file(file_path):
+    # TODO: Should be defined in the projet's settings, to ensure consistency between separate runs
     coordinates_decimals = os.environ.get('RAINCELL_COORDINATES_ROUND_DECIMALS', '5')
     coordinates_decimals = int(coordinates_decimals)
     nc = netCDF4.Dataset(file_path, "r", format="netCDF4")
@@ -52,8 +53,8 @@ def import_file(file_path, verbose=False):
     coordinates_decimals = int(coordinates_decimals)
 
     nc = netCDF4.Dataset(file_path, "r", format="netCDF4")
-    mask = list(Cell.objects.all().values('cell_id'))
-    mask_ids = [o['cell_id'] for o in mask]
+    mask = list(Cell.objects.all().values('id'))
+    mask_ids = [o['id'] for o in mask]
     # ds = xr.open_dataset(file_path)
     # df = ds.to_dataframe()
     counter = 0
