@@ -1,0 +1,71 @@
+openapi: 3.0.3
+info:
+  title: Your Project API
+  version: 1.0.0
+  description: Your project description
+paths:
+  /api/v1/raincell/:
+    get:
+      operationId: root_retrieve
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/raincell/records/daily/{cell_id}:
+    get:
+      operationId: records_daily_retrieve
+      description: Get Raincell records
+      parameters:
+      - in: path
+        name: cell_id
+        schema:
+          type: string
+          pattern: ^[0-9]{16}$
+        required: true
+      tags:
+      - records
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/raincell/records/daily/{lat}/{lon}:
+    get:
+      operationId: records_daily_retrieve_2
+      description: Get Raincell records
+      parameters:
+      - in: path
+        name: lat
+        schema:
+          type: string
+          pattern: ^\d+\.\d+$
+        required: true
+      - in: path
+        name: lon
+        schema:
+          type: string
+          pattern: ^\d+\.\d+$
+        required: true
+      tags:
+      - records
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

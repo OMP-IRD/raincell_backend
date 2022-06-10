@@ -5,7 +5,6 @@ from django.db import transaction
 import netCDF4
 import datetime
 import os
-import statistics
 
 
 @transaction.atomic
