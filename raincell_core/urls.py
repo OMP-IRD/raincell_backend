@@ -7,8 +7,8 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 urlpatterns = [
     path('api/v1/raincell/', views.api_root),
     path('api/v1/raincell/cells/', views.CellsList.as_view(), name="get-cells-list"),
-    re_path(r'^api/v1/raincell/records/daily/(?P<lat>\d+\.\d+)/(?P<lon>\d+\.\d+)$', views.CellDailyRecordsByCoordinates.as_view(), name="get-records-by-coordinates"),
-    re_path(r'^api/v1/raincell/records/daily/(?P<cell_id>[0-9]{16})$', views.CellDailyRecordsById.as_view(), name="get-records-by-id"),
+    re_path(r'^api/v1/raincell/cells/(?P<lat>\d+\.\d+)/(?P<lon>\d+\.\d+)/data/(?P<mode>all|daily)$', views.CellDailyRecordsByCoordinates.as_view(), name="get-records-by-coordinates"),
+    re_path(r'^api/v1/raincell/cells/(?P<cell_id>[0-9]{16})/data/(?P<mode>all|daily)$', views.CellDailyRecordsById.as_view(), name="get-records-by-id"),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     # Optional UI:
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
