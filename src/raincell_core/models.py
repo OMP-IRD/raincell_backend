@@ -35,6 +35,7 @@ class RainRecord(models.Model):
     quantile50 = JSONField("Quantile50", null=True, default=json_empty_default, help_text="This is the value we will use")
     quantile75 = JSONField("Quantile75", null=True, default=json_empty_default)
     daily_mean = models.FloatField("Daily Mean", null=True, blank=True, help_text="to be computed, based on quantile50 values")
+    is_fake = models.BooleanField("Is fake data", null=True, default=False, help_text="used to flag fake data added by generate_fake_data admin command")
 
     class Meta:
         verbose_name = 'Rain record: 1 rain record per cell and per day'

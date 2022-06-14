@@ -25,6 +25,7 @@ class Command(BaseCommand):
         verbose = kwargs.get('verbose', False)
 
         files_counter = 0
+        # TODO: get all files from a same day and commit only once the model
         for file_path in glob.iglob(folder_path + '**/20*.nc', recursive=True):
             start_time = perf_counter()
             print(file_path)

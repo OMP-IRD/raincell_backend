@@ -11,11 +11,6 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('file_path')
 
-        # Named (optional) arguments
-        parser.add_argument(
-            '--mask_path',
-            help='Provide the path to the mask file (alternative is to define it in RAINCELL_NETCDF_MASK_PATH env. var',
-        )
         parser.add_argument(
             '--verbose',
             action='store_true',

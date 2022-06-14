@@ -22,18 +22,18 @@ apt-get install -y --no-install-recommends \
 - it uses docker to start complementary apps (postgis, pg_tileserv). 
 You will need to install [docker](https://docs.docker.com/engine/install/) and [docker-compose](https://docs.docker.com/compose/). 
 - Install dependencies:
-`pip install -r /app/requirements.txt`
+`pip install -r /src/requirements.txt`
 - Start the docker compo
 ```bash
 docker-compose -f docker-compose-dev.yml up -d
 ```
 - Apply the django model to the brand new DB:
 ```bash
-./app/manage.py makemigrations
+./src/manage.py makemigrations
 ```
 - Start the development server
 ```bash
-./app/manage.py runserver
+./src/manage.py runserver
 ```
 - Test the API. You can use the [swagger UI](http://localhost:8000/api/schema/swagger-ui/)
 
@@ -56,7 +56,7 @@ docker run --rm -p 8001:8000 --name raincell_backend \
             -e POSTGRES_PORT=5432  \
             pigeosolutions/raincell_backend:latest
 ```
-- Import data. You can either import the sample dataset directly using the DB dump, or import your data using the app's import commands
+- Import data. You can either import the sample dataset directly using the DB dump, or import your data using the app's import commands. 
   - Using the DB dump, for a quick setup:
     The database's port is binded to localhost, so if you have psql client installed on your computer, you can run
     ```
@@ -68,6 +68,7 @@ docker run --rm -p 8001:8000 --name raincell_backend \
     # Import the geospatial grid cells, using the netcdf mask
     docker exec raincell_backend /app/manage.py raincell_generate_cells /sample_data/cameroun/Raincell_masque_Cameroun.nc
     ```
+    
     - Import some raincell netcdf data. You can either use `manage.py raincell_import_file` command, to import just one file, 
     or `manage.py raincell_batch_import` to import all files from a folder. For instance
     ```bash
@@ -75,6 +76,12 @@ docker run --rm -p 8001:8000 --name raincell_backend \
     docker exec raincell_backend /app/manage.py raincell_batch_import /sample_data/cameroun/samples/
     # or single file import
     #docker exec raincell_backend /app/manage.py raincell_import_file /sample_data/cameroun/samples/20211003_2355_Raincell_Cameroun_InvRainResol-2.5km.nc.aux.xml
+    ```
+
+    - alternatively, you can generate some fake data (but you will still need to have generated the cells, see the previous step):
+    ```bash
+    # Batch import
+    docker exec raincell_backend /app/manage.py raincell_generate_fake_data --verbose --overwrite_existing 2022-05-01 2022-06-14
     ```
 
 It will expose the following services:
