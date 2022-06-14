@@ -118,8 +118,9 @@ def get_records_full_mode(cell_id, ref_date, duration):
                 rain_record['data'].append({
                     'day': rec.recorded_day,
                     'time': time,
+                    'quantile25': rec.quantile25[time],
                     'quantile50': rec.quantile50[time],
-                    'uncertainty': rec.quantile50[time] - rec.quantile25[time]
+                    'quantile75': rec.quantile75[time],
                 })
             # else:
             #     print("Max time is {}, discarding {}/{}".format(latest_time, oldest_day, time))
