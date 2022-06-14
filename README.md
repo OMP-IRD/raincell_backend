@@ -56,19 +56,26 @@ docker run --rm -p 8001:8000 --name raincell_backend \
             -e POSTGRES_PORT=5432  \
             pigeosolutions/raincell_backend:latest
 ```
-- Import the mask netcdf file (defines the grid cells to be served)
-```bash
-# Import the geospatial grid cells, using the netcdf mask
-docker exec raincell_backend /app/manage.py raincell_generate_cells /sample_data/cameroun/Raincell_masque_Cameroun.nc
-```
-- Import some raincell netcdf data. You can either use `manage.py raincell_import_file` command, to import just one file, 
-or `manage.py raincell_batch_import` to import all files from a folder. For instance
-```bash
-# Batch import
-docker exec raincell_backend /app/manage.py raincell_batch_import /sample_data/cameroun/samples/
-# or single file import
-#docker exec raincell_backend /app/manage.py raincell_import_file /sample_data/cameroun/samples/20211003_2355_Raincell_Cameroun_InvRainResol-2.5km.nc.aux.xml
-```
+- Import data. You can either import the sample dataset directly using the DB dump, or import your data using the app's import commands
+  - Using the DB dump, for a quick setup:
+    The database's port is binded to localhost, so if you have psql client installed on your computer, you can run
+    ```
+    gunzip < sample_data/cameroun/raincell_samples.sql.gz | psql -U postgres -d raincell -h localhost -p 5432 
+    ```
+  - Using the app's import tools:
+    - Import the mask netcdf file (defines the grid cells to be served)
+    ```bash
+    # Import the geospatial grid cells, using the netcdf mask
+    docker exec raincell_backend /app/manage.py raincell_generate_cells /sample_data/cameroun/Raincell_masque_Cameroun.nc
+    ```
+    - Import some raincell netcdf data. You can either use `manage.py raincell_import_file` command, to import just one file, 
+    or `manage.py raincell_batch_import` to import all files from a folder. For instance
+    ```bash
+    # Batch import
+    docker exec raincell_backend /app/manage.py raincell_batch_import /sample_data/cameroun/samples/
+    # or single file import
+    #docker exec raincell_backend /app/manage.py raincell_import_file /sample_data/cameroun/samples/20211003_2355_Raincell_Cameroun_InvRainResol-2.5km.nc.aux.xml
+    ```
 
 It will expose the following services:
 - API on http://localhost:8001/api/v1 and its related swagger UI on http://localhost:8001/api/schema/swagger-ui/

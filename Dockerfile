@@ -1,4 +1,4 @@
-FROM python:3.9
+FROM python:3.9-slim
 
 LABEL project="raincell"
 LABEL org.opencontainers.image.authors="jeanpommier@pi-geosolutions.fr"
@@ -26,12 +26,11 @@ RUN mkdir -p /app && chown www-data:www-data /app
 WORKDIR /app
 #RUN groupadd -r www-data && useradd -r -g www-data www-data
 
-RUN pip install --upgrade pip setuptools
-COPY --chown=www-data:www-data ./app/requirements.txt /app/requirements.txt
-RUN pip install -r /app/requirements.txt
-RUN pip install gunicorn
+RUN pip install --no-cache-dir --upgrade pip setuptools gunicorn
+COPY --chown=www-data:www-data src/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
-COPY --chown=www-data:www-data ./app/ /app/
+COPY --chown=www-data:www-data src/ /app/
 # Create static folder to store django static apps
 # Make www-data the owner (will be kept even if we mount a volume instead
 RUN mkdir /static && \
