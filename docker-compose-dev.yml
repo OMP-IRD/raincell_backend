@@ -27,8 +27,8 @@ services:
     depends_on:
       - database
     env_file:
-      - pg_tileserv.env
+      - config/pg_tileserv/pg_tileserv.env
     ports:
       - 7800:7800
     volumes:
-      - ./config/:/config/
+      - ./config/pg_tileserv/config/:/config/
