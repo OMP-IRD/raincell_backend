@@ -1,4 +1,8 @@
 version: "3.1"
+#
+# Dockerfile to use to run a dev environment. Provides a postgis database and a pg_tileserv MVT server
+#
+
 
 volumes:
   postgresql-data:
@@ -18,7 +22,7 @@ services:
       POSTGRES_PASSWORD: raincell
 
   pg-tileserv:
-    image: pigeosolutions/pg_tileserv:latest-alpine-3.12
+    image: pigeosolutions/pg_tileserv:latest
     entrypoint: [ "/wait-for-db.sh" ]
     depends_on:
       - database

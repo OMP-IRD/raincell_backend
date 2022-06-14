@@ -26,6 +26,9 @@ class Migration(migrations.Migration):
                         ref_date date default '2021-10-04')
             RETURNS bytea
             AS $$
+			DECLARE
+				result bytea;
+			BEGIN
                 WITH
                 bounds AS (
                   SELECT ST_TileEnvelope(z, x, y) AS geom
@@ -55,14 +58,19 @@ class Migration(migrations.Migration):
 						ON r.cell_id=g.id
                 ),
                 mvtgeom AS (
-                  SELECT t.cell_id, ST_AsMVTGeom(ST_Transform(t.geom, 3857), bounds.geom) AS geom,
+                  SELECT t.id, ST_AsMVTGeom(ST_Transform(t.geom, 3857), bounds.geom) AS geom,
                     t.quantiles50
                   FROM rain_cells_aggregated_records t, bounds
                   WHERE ST_Intersects(t.geom, ST_Transform(bounds.geom, 4326))
                 )
-                SELECT ST_AsMVT(mvtgeom, 'public.rain_cells_for_date') FROM mvtgeom;
-            $$
-            LANGUAGE 'sql'
+				SELECT ST_AsMVT(mvtgeom, 'default')
+				INTO result
+				FROM mvtgeom;
+
+				RETURN result;
+			END;
+			$$
+            LANGUAGE 'plpgsql'
             STABLE
             PARALLEL SAFE;
             
@@ -74,7 +82,7 @@ class Migration(migrations.Migration):
                         z integer, x integer, y integer)
             RETURNS bytea
             AS $$
-                SELECT public.rain_cells_for_date(x,y,z,now()::date)
+                SELECT public.rain_cells_for_date(z,x,y,now()::date)
             $$
             LANGUAGE 'sql'
             STABLE
