@@ -53,7 +53,7 @@ class Migration(migrations.Migration):
 					GROUP BY cell_id
 				), 
                 rain_cells_aggregated_records AS (
-					SELECT r.*, g.geom
+					SELECT r.*, g.*
 					FROM aggregated_records AS r RIGHT JOIN raincell_grid AS g
 						ON r.cell_id=g.id
                 ),

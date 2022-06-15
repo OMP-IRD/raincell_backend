@@ -18,9 +18,9 @@ services:
     volumes:
       - postgresql-data:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_DB: raincell
-      POSTGRES_PASSWORD: raincell
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=raincell
+      - POSTGRES_PASSWORD=raincell
 
   pg-tileserv:
     image: pigeosolutions/pg_tileserv:latest
@@ -29,7 +29,7 @@ services:
       - database
     env_file:
       - config/pg_tileserv/pg_tileserv.env
+    environment:
+      - TS_BASEPATH=/tiles/
     ports:
       - 7800:7800
-    volumes:
-      - ./config/pg_tileserv/config/:/config/

@@ -15,7 +15,9 @@ from .models import RainRecord, Cell
 @api_view(['GET'])
 def api_root(request, format=None):
     return Response({
-        'cells': reverse('get-cells-list', request=request, format=format),
+        'cells-list': reverse('get-cells-list', request=request, format=format),
+        'swagger-ui': reverse('swagger-ui', request=request, format=format),
+        'openapi-schema': reverse('openapi-schema', request=request, format=format),
     })
 
 

@@ -4,5 +4,5 @@ set -e
 # If an the env. var points to an existing file, make it the project's environment file
 # It is expected to contain the config necessary for the app, see example in django/app/project/.env
 if [[ -f $DJANGO_ENV_FILE ]]; then
-  cp $DJANGO_ENV_FILE /app/project/.env
+  cp $DJANGO_ENV_FILE /app/raincell_backend/.env
 fi
