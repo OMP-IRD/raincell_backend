@@ -11,7 +11,7 @@ urlpatterns = [
     re_path(r'^api/v1/raincell/cells/(?P<cell_id>[0-9]{16})/data/(?P<mode>all|daily)$', views.CellDailyRecordsById.as_view(), name="get-records-by-id"),
     path('api/schema/', SpectacularAPIView.as_view(), name='openapi-schema'),
     # Optional UI:
-    path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='openapi-schema'), name='swagger-ui'),
     # path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
 

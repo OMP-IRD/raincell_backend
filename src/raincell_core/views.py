@@ -133,7 +133,7 @@ class CellDailyRecordsById(generics.GenericAPIView):
     """
     Get Raincell records
     """
-
+    serializer_class="RainRecordSerializer"
     @extend_schema(
         # extra parameters added to the schema
         parameters=[
@@ -177,6 +177,7 @@ class CellDailyRecordsByCoordinates(generics.GenericAPIView):
     """
     Get Raincell records on given lat/lon coordinates
     """
+    serializer_class="RainRecordSerializer"
     @extend_schema(
         # extra parameters added to the schema
         parameters=[
