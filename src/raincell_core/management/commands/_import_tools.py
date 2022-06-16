@@ -31,12 +31,12 @@ def import_mask_file(file_path):
                 # Generate a Cell point in the DB
                 cell_id_from_coords = latlon_to_cellid(lat, lon, coordinates_decimals)
                 location = Point(lon, lat)
-                cell_exists = Cell.objects.filter(cell_id__exact=cell_id_from_coords).count()
+                cell_exists = Cell.objects.filter(id__exact=cell_id_from_coords).count()
                 if not cell_exists:
                     # no existing cell => we create one
                     try:
                         rec = Cell.objects.create(
-                            cell_id=cell_id_from_coords,
+                            id=cell_id_from_coords,
                             location=location,
                         )
                     except (IntegrityError):

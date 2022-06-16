@@ -57,12 +57,12 @@ docker run --rm -p 8001:8000 --name raincell_backend \
             pigeosolutions/raincell_backend:latest
 ```
 - Import data. You can either import the sample dataset directly using the DB dump, or import your data using the app's import commands. 
-  - Using the DB dump, for a quick setup:
+  - _**Using the DB dump, for a quick setup**_:
     The database's port is binded to localhost, so if you have psql client installed on your computer, you can run
     ```
     gunzip < sample_data/cameroun/raincell_samples.sql.gz | psql -U postgres -d raincell -h localhost -p 5432 
     ```
-  - Using the app's import tools:
+  - **Using the app's import tools**:
     - Import the mask netcdf file (defines the grid cells to be served)
     ```bash
     # Import the geospatial grid cells, using the netcdf mask
@@ -78,9 +78,9 @@ docker run --rm -p 8001:8000 --name raincell_backend \
     #docker exec raincell_backend /app/manage.py raincell_import_file /sample_data/cameroun/samples/20211003_2355_Raincell_Cameroun_InvRainResol-2.5km.nc.aux.xml
     ```
 
-    - alternatively, you can generate some fake data (but you will still need to have generated the cells, see the previous step):
+    - alternatively, **you can generate some fake data** (*but you will still need to have generated the cells, see the previous step*):
     ```bash
-    # Batch import
+    # Generate fake data
     docker exec raincell_backend /app/manage.py raincell_generate_fake_data --verbose --overwrite_existing 2022-05-01 2022-06-14
     ```
 
