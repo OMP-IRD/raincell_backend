@@ -5,7 +5,8 @@ from django.core.management.base import BaseCommand
 
 from time import perf_counter
 
-from ...models import Cell, RainRecord
+from raincell_core.models import Cell, RainRecord
+from raincell_core.utils import roundit
 
 
 class Command(BaseCommand):
@@ -46,9 +47,9 @@ class Command(BaseCommand):
         counter = 0
         for d in dates_list:
             for id in mask_ids:
-                quantile50_values_list = [ abs(random.gauss(2,2)) for i in range (96)]
-                quantile75_values_list = [ q + abs(random.gauss(2,2)/20) for q in quantile50_values_list ]
-                quantile25_values_list = [ max(0, q - abs(random.gauss(2,2)/20)) for q in quantile50_values_list ]
+                quantile50_values_list = [ roundit(abs(random.gauss(2,2))) for i in range (96)]
+                quantile75_values_list = [ roundit(q + abs(random.gauss(2,2)/20)) for q in quantile50_values_list ]
+                quantile25_values_list = [ roundit(max(0, q - abs(random.gauss(2,2)/20))) for q in quantile50_values_list ]
                 recs = RainRecord.objects.filter(cell_id__exact=id,
                                                  recorded_day=d,
                                                  )

@@ -7,7 +7,7 @@ from django.db import transaction
 from django.db import IntegrityError
 
 from raincell_core.models import Cell, RainRecord
-from raincell_core.utils import latlon_to_cellid
+from raincell_core.utils import latlon_to_cellid, roundit
 
 
 # @transaction.atomic
@@ -72,9 +72,9 @@ def import_file(file_path, verbose=False):
                         format(
                             lat,
                             lon,
-                            nc.variables['Rainfall'][0, ilat, ilon].item(),
-                            nc.variables['Rainfall'][1, ilat, ilon].item(),
-                            nc.variables['Rainfall'][2, ilat, ilon].item()
+                            roundit(nc.variables['Rainfall'][0, ilat, ilon].item()),
+                            roundit(nc.variables['Rainfall'][1, ilat, ilon].item()),
+                            roundit(nc.variables['Rainfall'][2, ilat, ilon].item())
                         )
                     )
                 filename = os.path.basename(file_path)
@@ -90,9 +90,9 @@ def import_file(file_path, verbose=False):
                         cell_id=cell_id_from_coords,
                         recorded_day=file_day_date,
                     )
-                rec.quantile25[file_time] = nc.variables['Rainfall'][0, ilat, ilon].item()
-                rec.quantile50[file_time] = nc.variables['Rainfall'][1, ilat, ilon].item()
-                rec.quantile75[file_time] = nc.variables['Rainfall'][2, ilat, ilon].item()
+                rec.quantile25[file_time] = roundit(nc.variables['Rainfall'][0, ilat, ilon].item())
+                rec.quantile50[file_time] = roundit(nc.variables['Rainfall'][1, ilat, ilon].item())
+                rec.quantile75[file_time] = roundit(nc.variables['Rainfall'][2, ilat, ilon].item())
                 rec.save()
                 counter += 1
     return counter

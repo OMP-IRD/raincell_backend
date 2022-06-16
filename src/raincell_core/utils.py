@@ -1,3 +1,5 @@
+from django.conf import settings
+
 
 def latlon_to_cellid(lat, lon, max_decimals=5):
     """
@@ -29,3 +31,12 @@ def latlon_to_cellid(lat, lon, max_decimals=5):
                                                                               lonr=lon_parts[1],
                                                                               nb_dec=max_decimals)
     return cell_id
+
+
+def roundit(value):
+    """
+    Rounds value to the number of decimals given by the RAINCELL_SETTINGS.RECORD_DECIMALS django setting
+    :param value:
+    :return:
+    """
+    return round(value, settings.RAINCELL_SETTINGS.get('RECORD_DECIMALS'))

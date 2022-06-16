@@ -31,5 +31,6 @@ services:
       - config/pg_tileserv/pg_tileserv.env
     environment:
       - TS_BASEPATH=/tiles/
+      - TS_DBTIMEOUT=20
     ports:
       - 7800:7800
