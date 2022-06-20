@@ -15,16 +15,16 @@ class Migration(migrations.Migration):
         --
         -- Util views
         --
-        -- DROP VIEW public.raincell_grid CASCADE;
-        CREATE OR REPLACE VIEW public.raincell_grid
+        -- DROP VIEW raincell_grid CASCADE;
+        CREATE OR REPLACE VIEW raincell_grid
             AS
              SELECT raincell_core_cell.id,
                st_envelope(st_buffer(raincell_core_cell.location, (0.025 / 2::numeric)::double precision))::geometry(Geometry, 4326) AS geom
            FROM raincell_core_cell;
         
         
-        -- DROP VIEW public.raincell_daily_records;
-        CREATE OR REPLACE VIEW public.raincell_daily_records
+        -- DROP VIEW raincell_daily_records;
+        CREATE OR REPLACE VIEW raincell_daily_records
             AS
         SELECT cell_id, recorded_time::date AS recorded_date, ROUND(AVG(quantile50)::NUMERIC, 2) AS avg
         FROM raincell_core_atomicrainrecord
@@ -137,7 +137,7 @@ class Migration(migrations.Migration):
             
             -- subsampled grid generation function
             -- TODO maybe move it to a procedure, and create views from there
-            CREATE OR REPLACE FUNCTION public.raincell_grid_subsample(
+            CREATE OR REPLACE FUNCTION raincell_grid_subsample(
                 cell_size float default 0.5
             )
             RETURNS TABLE(id VARCHAR, geom geometry)
@@ -164,14 +164,14 @@ class Migration(migrations.Migration):
             --  - the atomic data on those subsampled geo grid (no time-based aggregate). Names of kind raincell_atomicrainrecord_sub{cell_size_string}
             -- where cell_size_string is made out of cell_size var, but removing the ".".
             --
-            CREATE OR REPLACE PROCEDURE public.raincell_grid_make_subsample_views()
+            CREATE OR REPLACE PROCEDURE raincell_grid_make_subsample_views()
                 AS
                 $$
             DECLARE
                cell_size  float;
             BEGIN
                 FOREACH cell_size IN ARRAY ARRAY[0.05, 0.1, 0.2, 0.4, 0.8] LOOP
-                    EXECUTE format('CREATE OR REPLACE VIEW  %I  AS SELECT * FROM public.raincell_grid_subsample(%L)', 'raincell_grid_sub' || replace(cell_size::text, '.',''), cell_size);
+                    EXECUTE format('CREATE OR REPLACE VIEW  %I  AS SELECT * FROM raincell_grid_subsample(%L)', 'raincell_grid_sub' || replace(cell_size::text, '.',''), cell_size);
                     --EXECUTE format('DROP VIEW %I', 'raincell_atomicrainrecord_sub' || replace(cell_size::text, '.',''));
                     EXECUTE format('
                         -- create subsampled data as views
@@ -195,10 +195,10 @@ class Migration(migrations.Migration):
             LANGUAGE 'plpgsql';
             
             -- execute the procedure
-            CALL public.raincell_grid_make_subsample_views();
+            CALL raincell_grid_make_subsample_views();
             
             -- Create a view exposing the original data, but spatialized to match the subsampled views structure
-            CREATE OR REPLACE VIEW public.raincell_atomicrainrecord_geo AS
+            CREATE OR REPLACE VIEW raincell_atomicrainrecord_geo AS
             SELECT r.*, g.geom
             FROM raincell_core_atomicrainrecord r INNER JOIN raincell_grid g
             ON r.cell_id = g.id;
@@ -210,9 +210,10 @@ class Migration(migrations.Migration):
             --
             -- MVT functions
             --
-            -- DROP FUNCTION public.mvt_rain_cells_for_time;
+            -- fetches data from subsample datasets based on zoom level
+            -- DROP FUNCTION mvt_rain_cells_for_time;
             CREATE OR REPLACE
-            FUNCTION public.mvt_rain_cells_for_time(
+            FUNCTION mvt_rain_cells_for_time(
                         z integer, x integer, y integer,
                         ref_time text default '2022-06-14T23:55:00+00:00',
                         duration text default '1 day')
@@ -258,7 +259,7 @@ class Migration(migrations.Migration):
                   FROM agg_geo t, bounds
                   WHERE ST_Intersects(t.geom, ST_Transform(bounds.geom, 4326))
                 )
-                SELECT ST_AsMVT(mvtgeom, ''public.mvt_rain_cells_for_time'')
+                SELECT ST_AsMVT(mvtgeom, ''mvt_rain_cells_for_time'')
             
                 FROM mvtgeom;
                 ', tblname)
@@ -272,7 +273,7 @@ class Migration(migrations.Migration):
             STABLE
             PARALLEL SAFE;
             
-            COMMENT ON FUNCTION public.mvt_rain_cells_for_time IS 'Returns MVT. Aggregates data for the given datetime, with a history period defined by duration parameter (defaults 1 day).  Depending on the zoom level, the data will be aggregated into larger cells, to avoid sending huge VT. ref_time is expected as a full datetime character string (e.g. "2022-06-14T23:55:00+00:00". But be aware that you might have, in case of passing this parameter from a browser URL, to escape it: in that case, replace the "+" by "%2B"';
+            COMMENT ON FUNCTION mvt_rain_cells_for_time IS 'Returns MVT. Aggregates data for the given datetime, with a history period defined by duration parameter (defaults 1 day).  Depending on the zoom level, the data will be aggregated into larger cells, to avoid sending huge VT. ref_time is expected as a full datetime character string (e.g. "2022-06-14T23:55:00+00:00". But be aware that you might have, in case of passing this parameter from a browser URL, to escape it: in that case, replace the "+" by "%2B"';
 
             """
         ),

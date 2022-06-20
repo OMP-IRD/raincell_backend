@@ -97,7 +97,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'OPTIONS': {
-            'options': '-c search_path=raincell_cameroun,public,topology'
+            'options': '-c search_path=cameroun,public,topology'
         },
         'HOST'  : env('POSTGRES_HOST'),
         'PORT'  : env('POSTGRES_PORT'),
