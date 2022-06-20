@@ -210,12 +210,12 @@ class Migration(migrations.Migration):
             --
             -- MVT functions
             --
-            -- fetches data from subsample datasets based on zoom level
+            -- DROP FUNCTION public.mvt_rain_cells_for_time;
             CREATE OR REPLACE
             FUNCTION public.mvt_rain_cells_for_time(
                         z integer, x integer, y integer,
-                        ref_date date default '2022-06-14',
-                        duration text default '1 days')
+                        ref_time text default '2022-06-14T23:55:00+00:00',
+                        duration text default '1 day')
             RETURNS bytea
             AS $$
             DECLARE
@@ -262,7 +262,7 @@ class Migration(migrations.Migration):
             
                 FROM mvtgeom;
                 ', tblname)
-                USING x, y, z, ref_date, duration
+                USING x, y, z, ref_time, duration
                 INTO result;
             
                 RETURN result;
@@ -272,7 +272,7 @@ class Migration(migrations.Migration):
             STABLE
             PARALLEL SAFE;
             
-            COMMENT ON FUNCTION public.mvt_rain_cells_for_time IS 'Aggregates values on the 2 days preceding the given date (included). Returns MVT';
+            COMMENT ON FUNCTION public.mvt_rain_cells_for_time IS 'Returns MVT. Aggregates data for the given datetime, with a history period defined by duration parameter (defaults 1 day).  Depending on the zoom level, the data will be aggregated into larger cells, to avoid sending huge VT. ref_time is expected as a full datetime character string (e.g. "2022-06-14T23:55:00+00:00". But be aware that you might have, in case of passing this parameter from a browser URL, to escape it: in that case, replace the "+" by "%2B"';
 
             """
         ),
