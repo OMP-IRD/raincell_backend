@@ -139,7 +139,7 @@ class Migration(migrations.Migration):
                                     ''q75'',r.quantile75
                                   )
                                   ORDER BY r.recorded_date) AS rc_data,
-                                  r_cell_id AS id,
+                                  r.cell_id AS id,
                                 r.geom
                         FROM %I AS r
                         WHERE (r.recorded_date BETWEEN $2::date  - $3::interval AND $2::date)
@@ -188,6 +188,12 @@ class Migration(migrations.Migration):
             $$
             LANGUAGE 'plpgsql' STABLE PARALLEL SAFE;
             
+            
+            -- Create a view exposing the original data, but spatialized
+            CREATE OR REPLACE VIEW raincell_atomicrainrecord_geo AS
+            SELECT r.cell_id, r.recorded_time, r.quantile25, r.quantile50, r.quantile75, g.geom
+            FROM raincell_core_atomicrainrecord r INNER JOIN raincell_grid g
+            ON r.cell_id = g.id;
             
             -- drop view raincell_daily_records_geo CASCADE;
             CREATE OR REPLACE VIEW raincell_daily_records_geo
@@ -247,13 +253,6 @@ class Migration(migrations.Migration):
             
             -- execute the procedure
             CALL raincell_grid_make_subsample_views();
-            
-            -- Create a view exposing the original data, but spatialized to match the subsampled views structure
-            CREATE OR REPLACE VIEW raincell_atomicrainrecord_geo AS
-            SELECT r.cell_id, r.recorded_time, r.quantile25, r.quantile50, r.quantile75, g.geom
-            FROM raincell_core_atomicrainrecord r INNER JOIN raincell_grid g
-            ON r.cell_id = g.id;
-
             """
         ),
         migrations.RunSQL(
