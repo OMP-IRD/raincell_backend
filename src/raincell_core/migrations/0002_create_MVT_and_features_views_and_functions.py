@@ -36,6 +36,7 @@ class Migration(migrations.Migration):
         migrations.RunSQL(
             """
             CREATE SCHEMA IF NOT EXISTS postgisftw;
+            
             --
             -- pg_featureserv views and functions
             --
@@ -48,31 +49,42 @@ class Migration(migrations.Migration):
                                     duration text default '1 days')
             RETURNS TABLE(cell_id VARCHAR, rc_data JSON, id VARCHAR, geom geometry)
             AS $$
+            DECLARE
+                tblname text;
             BEGIN
+				-- Determine which view to look into, based on the cell_id pattern
+				tblname := (
+					SELECT 
+						CASE
+							WHEN cell_ident LIKE 'g%' THEN
+								'raincell_atomicrainrecord_sub' || LTRIM(REPLACE(SPLIT_PART(cell_ident, '_', 1), '.', ''), 'g')
+							ELSE
+								'raincell_atomicrainrecord_geo'
+						END );
+				
+				-- Retrieve and aggregate the data
                 RETURN QUERY
+                EXECUTE format('
                     WITH
-                agg1 AS (
-                        SELECT r.cell_id, to_char(r.recorded_time, 'YYYYMMDD') AS d, json_agg(json_build_object(
-                                  't', to_char(r.recorded_time, 'HH24MI'),
-                                  'q25',r.quantile25,
-                                  'q50',r.quantile50,
-                                  'q75',r.quantile75
+                    agg1 AS (
+                        SELECT r.cell_id, to_char(r.recorded_time, ''YYYYMMDD'') AS d, json_agg(json_build_object(
+                                  ''t'', to_char(r.recorded_time, ''HH24MI''),
+                                  ''q25'',r.quantile25,
+                                  ''q50'',r.quantile50,
+                                  ''q75'',r.quantile75
                                 )
-                                ORDER BY r.recorded_time) AS v
-                        FROM raincell_core_atomicrainrecord AS r
-                            WHERE r.recorded_time BETWEEN ref_time::timestamp  - duration::interval AND ref_time::timestamp
-                        GROUP BY r.cell_id, to_char(r.recorded_time, 'YYYYMMDD')
-                   ),
-                    aggregated_records AS (
-                        SELECT r.cell_id, json_agg(json_build_object('d', r.d, 'v', r.v) ORDER BY r.d) AS rc_data
-                    FROM agg1 AS r
-                    GROUP BY r.cell_id
-                    )
-            
-                    SELECT r.*, g.*
-                    FROM aggregated_records AS r INNER JOIN raincell_grid AS g
-                        ON r.cell_id=g.id
-                        WHERE cell_ident IS NULL OR r.cell_id = cell_ident;
+                                ORDER BY r.recorded_time) AS v,
+                                r.geom
+                        FROM %I AS r
+                            WHERE (r.recorded_time BETWEEN $2::timestamp  - $3::interval AND $2::timestamp )
+                            AND ($1 IS NULL OR r.cell_id = $1)
+                        GROUP BY r.cell_id, to_char(r.recorded_time, ''YYYYMMDD''), r.geom
+                   )
+                    SELECT r.cell_id, json_agg(json_build_object(''d'', r.d, ''v'', r.v) ORDER BY r.d) AS rc_data, r.cell_id AS id, r.geom
+                        FROM agg1 AS r
+                        GROUP BY r.cell_id, r.geom;
+                ', tblname)
+                USING cell_ident, ref_time, duration;
             END;
             $$
             LANGUAGE 'plpgsql' STABLE PARALLEL SAFE;
@@ -200,7 +212,7 @@ class Migration(migrations.Migration):
             
             -- Create a view exposing the original data, but spatialized to match the subsampled views structure
             CREATE OR REPLACE VIEW raincell_atomicrainrecord_geo AS
-            SELECT r.*, g.geom
+            SELECT r.cell_id, r.recorded_time, r.quantile25, r.quantile50, r.quantile75, g.geom
             FROM raincell_core_atomicrainrecord r INNER JOIN raincell_grid g
             ON r.cell_id = g.id;
 
@@ -244,26 +256,26 @@ class Migration(migrations.Migration):
                   SELECT ST_TileEnvelope($3, $1, $2) AS geom
                 ),
                 agg1 AS (
-                        SELECT r.cell_id, to_char(r.recorded_time, ''YYYYMMDD'') AS d, json_agg(json_build_object(''t'', to_char(r.recorded_time, ''HH24MI''), ''v'', r.quantile50)) AS rc_data, r.geom
+                        SELECT r.cell_id, to_char(r.recorded_time, ''YYYYMMDD'') AS d, json_agg(json_build_object(''t'', to_char(r.recorded_time, ''HH24MI''), ''v'', r.quantile50) ORDER BY to_char(r.recorded_time, ''HH24MI'')) AS rc_data, r.geom
                         FROM %I AS r
                         WHERE r.recorded_time BETWEEN $4::timestamp  - $5::interval AND $4::timestamp
                         GROUP BY cell_id, to_char(r.recorded_time, ''YYYYMMDD''), r.geom
                 ),
-                agg_geo AS (
-                    SELECT r.cell_id, json_agg(json_build_object(''d'', r.d, ''rc_data'', r.rc_data)) AS rc_data, r.geom
+                agg2 AS (
+                    SELECT r.cell_id, json_agg(json_build_object(''d'', r.d, ''v'', r.rc_data) ORDER BY r.d) AS rc_data, r.geom, ''%I'' AS tblname
                     FROM agg1 AS r
                     GROUP BY r.cell_id, r.geom
                 ),
                 mvtgeom AS (
-                  SELECT t.cell_id, ST_AsMVTGeom(ST_Transform(t.geom, 3857), bounds.geom) AS geom,
+                  SELECT t.cell_id, t.tblname, ST_AsMVTGeom(ST_Transform(t.geom, 3857), bounds.geom) AS geom,
                     t.rc_data
-                  FROM agg_geo t, bounds
+                  FROM agg2 t, bounds
                   WHERE ST_Intersects(t.geom, ST_Transform(bounds.geom, 4326))
                 )
-                SELECT ST_AsMVT(mvtgeom, ''mvt_rain_cells_for_time'')
+                SELECT ST_AsMVT(mvtgeom, ''default'')
             
                 FROM mvtgeom;
-                ', tblname)
+                ', tblname, tblname)
                 USING x, y, z, ref_time, duration
                 INTO result;
             
@@ -273,6 +285,7 @@ class Migration(migrations.Migration):
             LANGUAGE 'plpgsql'
             STABLE
             PARALLEL SAFE;
+
             
             COMMENT ON FUNCTION mvt_rain_cells_for_time IS 'Returns MVT. Aggregates data for the given datetime, with a history period defined by duration parameter (defaults 1 day).  Depending on the zoom level, the data will be aggregated into larger cells, to avoid sending huge VT. ref_time is expected as a full datetime character string (e.g. "2022-06-14T23:55:00+00:00". But be aware that you might have, in case of passing this parameter from a browser URL, to escape it: in that case, replace the "+" by "%2B"';
 

@@ -3,9 +3,8 @@ version: "3.1"
 # Dockerfile to use to run a dev environment. Provides a postgis database and a pg_tileserv MVT server
 #
 
-
 volumes:
-  postgresql-data2:
+  postgresql-data:
 
 services:
   database:
@@ -16,7 +15,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgresql-data2:/var/lib/postgresql/data
+      - postgresql-data:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_DB=raincell
