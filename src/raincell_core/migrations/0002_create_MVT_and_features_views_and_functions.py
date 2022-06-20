@@ -22,14 +22,6 @@ class Migration(migrations.Migration):
                st_envelope(st_buffer(raincell_core_cell.location, (0.025 / 2::numeric)::double precision))::geometry(Geometry, 4326) AS geom
            FROM raincell_core_cell;
         
-        
-        -- DROP VIEW raincell_daily_records;
-        CREATE OR REPLACE VIEW raincell_daily_records
-            AS
-        SELECT cell_id, recorded_time::date AS recorded_date, ROUND(AVG(quantile50)::NUMERIC, 2) AS avg
-        FROM raincell_core_atomicrainrecord
-        GROUP BY cell_id, recorded_time::date
-        ORDER BY cell_id,recorded_date;
             """
         ),
 
@@ -43,6 +35,30 @@ class Migration(migrations.Migration):
             
             -- Provides the 15m values service (& full geographic dataset too, as a bonus if you let cell_ident to NULL)
             -- Optimized version compared to above: from 6,7MB to 2.3MB for full dataset (1 day)
+            
+            -- Determine which view to look into, based on the cell_id pattern
+            CREATE OR REPLACE FUNCTION cameroun.tablename_from_cell_id(
+									tbname_prefix varchar default 'raincell_atomicrainrecord',
+                                    cell_ident text default NULL, OUT tblname varchar)
+            RETURNS varchar
+            AS $$
+            BEGIN
+				-- Determine which view to look into, based on the cell_id pattern
+				-- RAISE log 'cell_ident %', cell_ident;
+					SELECT 
+						CASE
+							WHEN cell_ident LIKE 'g%' THEN
+								tbname_prefix||'_sub' || LTRIM(REPLACE(SPLIT_PART(cell_ident, '_', 1), '.', ''), 'g')
+							ELSE
+								tbname_prefix||'_geo'
+						END 
+						INTO tblname;
+            END;
+            $$
+            LANGUAGE 'plpgsql' STABLE PARALLEL SAFE;
+            COMMENT ON FUNCTION cameroun.tablename_from_cell_id IS 'Determine the view containing the cell, based on the cell''s cell_id';
+            
+						
             CREATE OR REPLACE FUNCTION postgisftw.rain_at_time_and_cell(
                                     cell_ident text default NULL,
                                     ref_time text default '2022-06-14T23:55:00+00:00',
@@ -53,15 +69,7 @@ class Migration(migrations.Migration):
                 tblname text;
             BEGIN
 				-- Determine which view to look into, based on the cell_id pattern
-				tblname := (
-					SELECT 
-						CASE
-							WHEN cell_ident LIKE 'g%' THEN
-								'raincell_atomicrainrecord_sub' || LTRIM(REPLACE(SPLIT_PART(cell_ident, '_', 1), '.', ''), 'g')
-							ELSE
-								'raincell_atomicrainrecord_geo'
-						END );
-				
+				tblname := (SELECT cameroun.tablename_from_cell_id('raincell_atomicrainrecord',cell_ident));
 				-- Retrieve and aggregate the data
                 RETURN QUERY
                 EXECUTE format('
@@ -107,9 +115,7 @@ class Migration(migrations.Migration):
             LANGUAGE 'plpgsql' STABLE PARALLEL SAFE;
             COMMENT ON FUNCTION postgisftw.rain_at_time IS 'Returns the rain on the given datetime, with a history period defined by duration parameter (defaults 2 days). Is just a special case of rain_at_time_and_cell, where cell_ident is not a variable anymore (set to NULL => all the dataset is returned)';
             
-            
-            
-            
+                        
             -- Provides the daily values service (& full geographic dataset too, as a bonus if you let cell_ident to NULL)
             CREATE OR REPLACE FUNCTION postgisftw.rain_daily_at_date_and_cell(
                                     cell_ident text default NULL,
@@ -117,20 +123,33 @@ class Migration(migrations.Migration):
                                     duration text default '50 days')
             RETURNS TABLE(cell_id VARCHAR, rc_data JSON, id VARCHAR, geom geometry)
             AS $$
+            DECLARE
+                tblname text;
             BEGIN
+        				-- Determine which view to look into, based on the cell_id pattern
+        				tblname := (SELECT cameroun.tablename_from_cell_id('raincell_daily_records', cell_ident));
+        				-- Retrieve and aggregate the data
                 RETURN QUERY
+                EXECUTE format('
                     WITH
                     aggregated_records AS (
-                        SELECT r.cell_id, json_agg(json_build_object('d', r.recorded_date, 'v', r.avg)) AS rc_data
-                        FROM raincell_daily_records AS r
-                        WHERE r.recorded_date BETWEEN ref_date::date  - duration::interval AND ref_date::date
-                        GROUP BY r.cell_id
+                        SELECT r.cell_id, json_agg(json_build_object(''d'', r.recorded_date, 
+                                    ''q25'',r.quantile25,
+                                    ''q50'',r.quantile50,
+                                    ''q75'',r.quantile75
+                                  )
+                                  ORDER BY r.recorded_date) AS rc_data,
+                                  r_cell_id AS id,
+                                r.geom
+                        FROM %I AS r
+                        WHERE (r.recorded_date BETWEEN $2::date  - $3::interval AND $2::date)
+                          AND ($1 IS NULL OR r.cell_id = $1)
+                        GROUP BY r.cell_id, r.geom
                     )
             
-                    SELECT r.*, g.*
-                    FROM aggregated_records AS r INNER JOIN raincell_grid AS g
-                        ON r.cell_id=g.id
-                        WHERE cell_ident IS NULL OR r.cell_id = cell_ident;
+                    SELECT *  FROM aggregated_records ;
+                ', tblname)
+                USING cell_ident, ref_date, duration;
             END;
             $$
             LANGUAGE 'plpgsql' STABLE PARALLEL SAFE;
@@ -170,12 +189,20 @@ class Migration(migrations.Migration):
             LANGUAGE 'plpgsql' STABLE PARALLEL SAFE;
             
             
+            -- drop view raincell_daily_records_geo CASCADE;
+            CREATE OR REPLACE VIEW raincell_daily_records_geo
+                AS
+                SELECT cell_id, recorded_time::date AS recorded_date, ROUND(AVG(quantile25)::NUMERIC, 2) AS quantile25, ROUND(AVG(quantile50)::NUMERIC, 2) AS quantile50, ROUND(AVG(quantile75)::NUMERIC, 2) AS quantile75, geom::geometry(Geometry, 4326)
+                FROM raincell_atomicrainrecord_geo
+                GROUP BY cell_id, recorded_time::date, geom
+                ORDER BY cell_id,recorded_date;
+            
             --
             -- Procedure, that automatically builds
             --  - the subsampled geo grids (no data). Names of kind raincell_grid_sub{cell_size_string}
             --  - the atomic data on those subsampled geo grid (no time-based aggregate). Names of kind raincell_atomicrainrecord_sub{cell_size_string}
             -- where cell_size_string is made out of cell_size var, but removing the ".".
-            --
+        
             CREATE OR REPLACE PROCEDURE raincell_grid_make_subsample_views()
                 AS
                 $$
@@ -198,7 +225,18 @@ class Migration(migrations.Migration):
                         FROM geo_records r, %I g
                         WHERE ST_contains(g.geom, r.location)
                         GROUP BY r.recorded_time, g.id, g.geom;',
-                'raincell_atomicrainrecord_sub' || replace(cell_size::text, '.',''),
+                  'raincell_atomicrainrecord_sub' || replace(cell_size::text, '.',''),
+                  'raincell_grid_sub' || replace(cell_size::text, '.','')
+                  );
+                  -- subsample daily data
+                  EXECUTE format('
+                      -- create subsampled data as views
+                      CREATE OR REPLACE VIEW %I AS
+                      SELECT g.id AS cell_id, r.recorded_date, round(avg(r.quantile25)::numeric,2) AS quantile25, round(avg(r.quantile50)::numeric,2) AS quantile50, round(avg(r.quantile75)::numeric, 2) AS quantile75, g.geom::geometry(Geometry, 4326)
+                      FROM raincell_daily_records_geo r, %I g
+                      WHERE ST_contains(g.geom, r.geom)
+                      GROUP BY r.recorded_date, g.id, g.geom;',
+                'raincell_daily_records_sub' || replace(cell_size::text, '.',''),
                 'raincell_grid_sub' || replace(cell_size::text, '.','')
                 );
             
