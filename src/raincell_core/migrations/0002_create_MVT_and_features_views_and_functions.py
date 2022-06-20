@@ -171,7 +171,8 @@ class Migration(migrations.Migration):
                cell_size  float;
             BEGIN
                 FOREACH cell_size IN ARRAY ARRAY[0.05, 0.1, 0.2, 0.4, 0.8] LOOP
-                    EXECUTE format('CREATE OR REPLACE VIEW  %I  AS SELECT * FROM raincell_grid_subsample(%L)', 'raincell_grid_sub' || replace(cell_size::text, '.',''), cell_size);
+                    --EXECUTE format('DROP VIEW %I CASCADE', 'raincell_grid_sub' || replace(cell_size::text, '.',''));
+                    EXECUTE format('CREATE OR REPLACE VIEW  %I  AS SELECT id, geom::geometry(Geometry, 4326) FROM raincell_grid_subsample(%L)', 'raincell_grid_sub' || replace(cell_size::text, '.',''), cell_size);
                     --EXECUTE format('DROP VIEW %I', 'raincell_atomicrainrecord_sub' || replace(cell_size::text, '.',''));
                     EXECUTE format('
                         -- create subsampled data as views
@@ -181,7 +182,7 @@ class Migration(migrations.Migration):
                             FROM raincell_core_atomicrainrecord t, raincell_core_cell g
                             WHERE t.cell_id = g.id
                         )
-                        SELECT g.id AS cell_id, r.recorded_time, round(avg(r.quantile25)::numeric,2) AS quantile25, round(avg(r.quantile50)::numeric,2) AS quantile50, round(avg(r.quantile75)::numeric, 2) AS quantile75, g.geom
+                        SELECT g.id AS cell_id, r.recorded_time, round(avg(r.quantile25)::numeric,2) AS quantile25, round(avg(r.quantile50)::numeric,2) AS quantile50, round(avg(r.quantile75)::numeric, 2) AS quantile75, g.geom::geometry(Geometry, 4326)
                         FROM geo_records r, %I g
                         WHERE ST_contains(g.geom, r.location)
                         GROUP BY r.recorded_time, g.id, g.geom;',
