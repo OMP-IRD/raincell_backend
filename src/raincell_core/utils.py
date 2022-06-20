@@ -1,3 +1,5 @@
+import datetime
+
 from django.conf import settings
 
 
@@ -39,4 +41,15 @@ def roundit(value):
     :param value:
     :return:
     """
-    return round(value, settings.RAINCELL_SETTINGS.get('RECORD_DECIMALS'))
+    return round(value, settings.RAINCELL_SETTINGS.get('RECORD_DECIMALS', 2))
+
+
+def date_from_filename(filename):
+    """
+    Get a netcdf raincell file name, and extract the datetime out of it
+    :param filename: (string)
+    :return: datetime object
+    """
+    dt_string = filename.split('_')[0] + "" + filename.split('_')[1]
+    dt = datetime.datetime.strptime(dt_string, "%Y%m%d %H%M")
+    return dt

@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from raincell_core.models import AtomicRainRecord
 
 class CellsSerializer(serializers.Serializer):
     id = serializers.CharField()
@@ -13,3 +14,9 @@ class RainRecordSerializer(serializers.Serializer):
     cell_id = serializers.CharField()
     data = serializers.JSONField()
     message = serializers.CharField()
+
+
+class AtomicRainRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AtomicRainRecord
+        fields = ['cell_id', 'recorded_time', 'quantile25', 'quantile50', 'quantile75']

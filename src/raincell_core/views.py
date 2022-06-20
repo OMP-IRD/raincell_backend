@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 from rest_framework import generics, status
 from rest_framework.pagination import PageNumberPagination
@@ -8,8 +8,8 @@ from rest_framework.reverse import reverse
 from django.contrib.gis.geos import Point
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 
-from .serializers import CellsSerializer, RainRecordSerializer
-from .models import RainRecord, Cell
+from .serializers import CellsSerializer, RainRecordSerializer, AtomicRainRecordSerializer
+from .models import RainRecord, Cell, AtomicRainRecord
 
 
 @api_view(['GET'])
@@ -52,10 +52,10 @@ def get_records_daily_mode(cell_id, ref_date, duration):
     from_date = ref_date - timedelta(days=duration)
 
     # Get data from DB
-    records = RainRecord.objects.filter(cell_id__exact=cell_id,
-                                     recorded_day__gt=from_date,
-                                     recorded_day__lte=ref_date,
-                                     ).order_by('recorded_day')
+    records = AtomicRainRecord.objects.filter(cell_id__exact=cell_id,
+                                     recorded_time__gt=from_date,
+                                     recorded_time__lte=ref_date,
+                                     ).order_by('recorded_time')
 
     # Generate a simpler object structure for output
     rain_record = {
@@ -93,10 +93,10 @@ def get_records_full_mode(cell_id, ref_date, duration):
     from_date = ref_date - timedelta(days=duration)
 
     # Get data from DB
-    records = RainRecord.objects.filter(cell_id__exact=cell_id,
-                                     recorded_day__gte=from_date,
-                                     recorded_day__lte=ref_date,
-                                     ).order_by('recorded_day')
+    records = AtomicRainRecord.objects.filter(cell_id__exact=cell_id,
+                                     recorded_time__gte=from_date,
+                                     recorded_time__lte=ref_date,
+                                     ).order_by('recorded_time')
 
     # Generate a simpler object structure for output
     rain_record = {
@@ -128,6 +128,78 @@ def get_records_full_mode(cell_id, ref_date, duration):
             #     print("Max time is {}, discarding {}/{}".format(latest_time, oldest_day, time))
     return rain_record
 
+
+
+class RainRecordsById(generics.GenericAPIView):
+    """
+    Get Raincell records
+    """
+    serializer_class="RainRecordSerializer"
+    @extend_schema(
+        # extra parameters added to the schema
+        parameters=[
+            OpenApiParameter("cell_id", required=True, type=str, location=OpenApiParameter.PATH,
+                                 description="Cell identifier, as can be found on /api/v1/raincell/cells/",
+                                 examples=[
+                                     OpenApiExample(name= 'Cell at (lat=4.025, lon=9.15)' ,value='0940250018915000'),
+                                     OpenApiExample(name= 'Cell at (lat=4.625, lon=9.425)',value='0946250018942500'),
+                                 ],
+                             ),
+            OpenApiParameter(name='date_ref',
+                             description='Full-feldged ISO datetime string with timezone information. E.g. 2022-06-14T23:55:00+00:00',
+                             required=False, type=str, default=datetime.now()),
+            OpenApiParameter(name='duration', description='Duration time to extract, in days', required=False,
+                             type=int, default=2),
+        ],
+    )
+    def get(self, request, cell_id, format=None):
+        ref_date = request.query_params.get('date_ref')
+        if not ref_date:
+            ref_date = datetime.now()
+        else:
+            ref_date = datetime.fromisoformat(ref_date)
+        duration = request.query_params.get('duration')
+        if not duration:
+            duration = 2
+        else:
+            duration = int(duration)
+        from_date = ref_date - timedelta(days=duration)
+
+        # Get data from DB
+        records = AtomicRainRecord.objects.filter(cell_id__exact=cell_id,
+                                                  recorded_time__gte=from_date,
+                                                  recorded_time__lte=ref_date,
+                                                  ).order_by('recorded_time')
+
+        # Generate a simpler object structure for output
+        rain_record = {
+            'cell_id': cell_id,
+            'rc_data': dict(),
+            'message': '',
+        }
+        if len(records) == 0:
+            rain_record['message'] = 'no data found'
+            return rain_record
+
+        # Retrieve the latest time available
+        # Make sure the records are sorted in the proper order (should be)
+        # sorted_records = sorted(records, key=lambda o: o.recorded_day)
+        # latest_time = list(sorted_records[-1].quantile50.keys())[-1]
+        # oldest_day = from_date
+
+        for rec in records:
+            day = rec.recorded_time.strftime('%Y-%m-%d')
+            if not rain_record.get(day, None):
+                rain_record['rc_data'][day]= list()
+            rain_record['rc_data'][day].append({
+                'time': rec.recorded_time.strftime('%H%M'),
+                'quantile25': rec.quantile25,
+                'quantile50': rec.quantile50,
+                'quantile75': rec.quantile75,
+            })
+
+        serializer = RainRecordSerializer(rain_record, many=False)
+        return Response(serializer.data)
 
 class CellDailyRecordsById(generics.GenericAPIView):
     """

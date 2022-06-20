@@ -1,0 +1,23 @@
+version: "3.1"
+
+services:
+  pghero:
+    image: ankane/pghero
+    container_name: pghero
+    env_file:
+      - config/pg_tileserv/pg_tileserv.env
+    ports:
+      - "8080:8080"
+
+  pgweb:
+    container_name: pgweb
+    restart: always
+    image: sosedoff/pgweb
+    ports:
+      - "8081:8081"
+#    links:
+#      - postgres:postgres  # my database container is called postgres, not db
+    environment:
+      - DATABASE_URL=postgres://postgres:raincell@database/raincell?sslmode=disable
+    depends_on:
+      - database

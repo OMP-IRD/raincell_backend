@@ -52,3 +52,22 @@ class RainRecord(models.Model):
             self.daily_mean = statistics.mean(self.quantile50.values())
         super().save(*args, **kwargs)  # Call the "real" save() method.
 
+
+class AtomicRainRecord(models.Model):
+    cell_id = models.CharField(max_length=16, unique_for_date="recorded_day")
+    recorded_time = models.DateTimeField("Date time")
+    quantile25 = models.FloatField("Quantile25", null=True)
+    quantile50 = models.FloatField("Quantile50", null=True, help_text="This is the value we will use")
+    quantile75 = models.FloatField("Quantile75", null=True)
+    is_fake = models.BooleanField("Is fake data", null=True, default=False, help_text="used to flag fake data added by generate_fake_data admin command")
+
+    class Meta:
+        verbose_name = 'Rain record: 1 rain record per cell and per datetime'
+        constraints = [
+            models.UniqueConstraint(fields=["cell_id", "recorded_time"], name="atomicrainrecord_unique_cellid_datetime"),
+        ]
+        indexes = [
+            models.Index(fields=['-recorded_time']),
+            models.Index(fields=['cell_id', '-recorded_time']),
+        ]
+

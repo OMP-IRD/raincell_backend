@@ -5,7 +5,7 @@ version: "3.1"
 
 
 volumes:
-  postgresql-data:
+  postgresql-data2:
 
 services:
   database:
@@ -16,14 +16,14 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgresql-data:/var/lib/postgresql/data
+      - postgresql-data2:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_DB=raincell
       - POSTGRES_PASSWORD=raincell
 
   pg-tileserv:
-    image: pigeosolutions/pg_tileserv:latest
+    image: pigeosolutions/pg_tileserv:latest-alpine-3.12
     entrypoint: [ "/wait-for-db.sh" ]
     depends_on:
       - database
@@ -32,5 +32,43 @@ services:
     environment:
       - TS_BASEPATH=/tiles/
       - TS_DBTIMEOUT=20
+      - TS_DBPOOLMAXCONNS=8
+      - TS_MAXFEATURESPERTILE=500
+      - TS_DEBUG=true
     ports:
       - 7800:7800
+
+
+  pg-featureserv:
+    image: pramsey/pg_featureserv:latest
+#    entrypoint: [ "/wait-for-db.sh" ]
+    depends_on:
+      - database
+    env_file:
+      - config/pg_tileserv/pg_tileserv.env
+    environment:
+      - PGFS_SERVER_BASEPATH=/features/
+      - PGFS_DATABASE_DBTIMEOUT=20
+      - PGFS_DATABASE_DBPOOLMAXCONNS=8
+      - PGFS_DATABASE_DEBUG=true
+      - PGFS_PAGING_LIMITMAX=10000
+    ports:
+      - 9000:9000
+
+  varnish:
+    image: varnish:stable
+    container_name: varnish
+    volumes:
+      - "./config/varnish/default.vcl:/etc/varnish/default.vcl"
+    ports:
+      - "80:80"
+    tmpfs:
+      - /var/lib/varnish:exec
+    environment:
+      - VARNISH_SIZE=2G
+#    command: "-p default_keep=300"
+    depends_on:
+      - "httpd"
+  httpd:
+    image: httpd:latest
+    container_name: httpd
