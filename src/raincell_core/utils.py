@@ -50,6 +50,6 @@ def date_from_filename(filename):
     :param filename: (string)
     :return: datetime object
     """
-    dt_string = filename.split('_')[0] + "" + filename.split('_')[1]
+    dt_string = filename.split('_')[0] + " " + filename.split('_')[1]
     dt = datetime.datetime.strptime(dt_string, "%Y%m%d %H%M")
     return dt
