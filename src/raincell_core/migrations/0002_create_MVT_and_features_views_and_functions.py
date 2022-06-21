@@ -181,7 +181,7 @@ class Migration(migrations.Migration):
                             SELECT (ST_SquareGrid(cell_size, ST_Transform(ext.geom,4326))).*
                             FROM ext
                         )
-                    SELECT DISTINCT ('g'||cell_size::text||'_'||a.i||'_'||a.j)::varchar AS id, a.geom::geometry(Geometry, 4326) FROM grid_sub a, raincell_core_cell b WHERE ST_Contains(a.geom,b.location);
+                    SELECT DISTINCT ('g'||cell_size::text||'_'||a.i||'_'||a.j)::varchar AS id, a.geom::geometry(Geometry, 4326) FROM grid_sub a, raincell_core_cell b WHERE ST_Intersects(a.geom,b.location);
             END;
             $$
             LANGUAGE 'plpgsql' STABLE PARALLEL SAFE;
@@ -238,7 +238,7 @@ class Migration(migrations.Migration):
                       CREATE OR REPLACE VIEW %I AS
                       SELECT g.id AS cell_id, r.recorded_date, round(avg(r.quantile25)::numeric,2) AS quantile25, round(avg(r.quantile50)::numeric,2) AS quantile50, round(avg(r.quantile75)::numeric, 2) AS quantile75, g.geom::geometry(Geometry, 4326)
                       FROM raincell_daily_records_geo r, %I g
-                      WHERE ST_contains(g.geom, r.geom)
+                      WHERE ST_contains(ST_centroid(g.geom), r.geom)
                       GROUP BY r.recorded_date, g.id, g.geom;',
                 'raincell_daily_records_sub' || replace(cell_size::text, '.',''),
                 'raincell_grid_sub' || replace(cell_size::text, '.','')
