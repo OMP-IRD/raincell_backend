@@ -126,9 +126,9 @@ class Migration(migrations.Migration):
             DECLARE
                 tblname text;
             BEGIN
-        				-- Determine which view to look into, based on the cell_id pattern
-        				tblname := (SELECT cameroun.tablename_from_cell_id('raincell_daily_records', cell_ident));
-        				-- Retrieve and aggregate the data
+                -- Determine which view to look into, based on the cell_id pattern
+                tblname := (SELECT cameroun.tablename_from_cell_id('raincell_daily_records', cell_ident));
+                -- Retrieve and aggregate the data
                 RETURN QUERY
                 EXECUTE format('
                     WITH
@@ -146,7 +146,6 @@ class Migration(migrations.Migration):
                           AND ($1 IS NULL OR r.cell_id = $1)
                         GROUP BY r.cell_id, r.geom
                     )
-            
                     SELECT *  FROM aggregated_records ;
                 ', tblname)
                 USING cell_ident, ref_date, duration;
@@ -167,7 +166,6 @@ class Migration(migrations.Migration):
             --
             
             -- subsampled grid generation function
-            -- TODO maybe move it to a procedure, and create views from there
             CREATE OR REPLACE FUNCTION raincell_grid_subsample(
                 cell_size float default 0.5
             )
