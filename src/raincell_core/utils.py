@@ -51,5 +51,5 @@ def date_from_filename(filename):
     :return: datetime object
     """
     dt_string = filename.split('_')[0] + " " + filename.split('_')[1]
-    dt = datetime.datetime.strptime(dt_string, "%Y%m%d %H%M")
+    dt = datetime.datetime.strptime(dt_string, "%Y%m%d %H%M").replace(tzinfo=datetime.timezone.utc)
     return dt
