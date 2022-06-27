@@ -1,3 +1,5 @@
+import os
+
 from django.core.management.base import BaseCommand, CommandError
 
 from . import _import_tools
@@ -17,12 +19,18 @@ class Command(BaseCommand):
             action='store_true',
             help='More verbose output',
         )
+        parser.add_argument(
+            '--delete',
+            action='store_true',
+            help='Delete processed files',
+        )
 
     def handle(self, *args, **kwargs):
         global_start_time = perf_counter()
 
         folder_path = kwargs['folder_path']
         verbose = kwargs.get('verbose', False)
+        delete_files = kwargs.get('delete', False)
 
         files_counter = 0
         # TODO: get all files from a same day and commit only once the model
@@ -33,6 +41,8 @@ class Command(BaseCommand):
             counter = _import_tools.import_file(file_path, verbose)
             end_time = perf_counter()
             self.stdout.write(self.style.SUCCESS('{} processed in {} seconds ({} records) '.format(file_path, end_time - start_time, counter)))
+            if delete_files:
+                os.remove(file_path)
 
         global_end_time = perf_counter()
         self.stdout.write(self.style.SUCCESS('Elapsed time: {}'.format(global_end_time - global_start_time)))
