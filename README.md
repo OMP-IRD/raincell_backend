@@ -62,6 +62,11 @@ docker run --rm -p 8001:8000 --name raincell_backend \
     ```
     gunzip < sample_data/cameroun/raincell_samples.sql.gz | psql -U postgres -d raincell -h localhost -p 5432 
     ```
+    The samples cover:
+    - On period **2022-06-12 to 2022-06-14**: full data on all cells
+    - On period **2021-06-12 to 2022-06-14**: full data on cell 0922750019140000
+
+
   - **Using the app's import tools**:
     - Import the mask netcdf file (defines the grid cells to be served)
     ```bash
